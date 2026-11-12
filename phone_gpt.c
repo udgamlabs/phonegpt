@@ -319,11 +319,11 @@ static float* point_params(Params* p, size_t* s) {
     return mem;
 }
 static void act_sizes(size_t* s, Config c, int B, int T) {
-    size_t C = c.C, NH = c.NH, L = c.L, Vp = c.Vp;
-    s[0] = B * T * C; s[1] = L * B * T * C; s[2] = L * B * T; s[3] = L * B * T; s[4] = L * B * T * 3 * C; s[5] = L * B * T * C;
-    s[6] = L * B * NH * T * T; s[7] = L * B * NH * T * T; s[8] = L * B * T * C; s[9] = L * B * T * C; s[10] = L * B * T * C;
-    s[11] = L * B * T; s[12] = L * B * T; s[13] = L * B * T * 4 * C; s[14] = L * B * T * 4 * C; s[15] = L * B * T * C;
-    s[16] = L * B * T * C; s[17] = B * T * C; s[18] = B * T; s[19] = B * T; s[20] = B * T * Vp; s[21] = B * T * Vp; s[22] = B * T;
+    size_t C = c.C, NH = c.NH, L = c.L, Vp = c.Vp, Bs = B, Ts = T;
+    s[0] = Bs * Ts * C; s[1] = L * Bs * Ts * C; s[2] = L * Bs * Ts; s[3] = L * Bs * Ts; s[4] = L * Bs * Ts * 3 * C; s[5] = L * Bs * Ts * C;
+    s[6] = L * Bs * NH * Ts * Ts; s[7] = L * Bs * NH * Ts * Ts; s[8] = L * Bs * Ts * C; s[9] = L * Bs * Ts * C; s[10] = L * Bs * Ts * C;
+    s[11] = L * Bs * Ts; s[12] = L * Bs * Ts; s[13] = L * Bs * Ts * 4 * C; s[14] = L * Bs * Ts * 4 * C; s[15] = L * Bs * Ts * C;
+    s[16] = L * Bs * Ts * C; s[17] = Bs * Ts * C; s[18] = Bs * Ts; s[19] = Bs * Ts; s[20] = Bs * Ts * Vp; s[21] = Bs * Ts * Vp; s[22] = Bs * Ts;
 }
 static float* point_acts(Acts* a, size_t* s, size_t* total) {
     size_t n = 0; for (int i = 0; i < NAT; i++) n += s[i];
@@ -484,6 +484,7 @@ static void load_data(const char* path) {
     free(buf);
 }
 static void get_batch(const int* ids, size_t n, int B, int T, int* x, int* y, uint64_t* r) {
+    if (n <= (size_t)T + 1) { fprintf(stderr, "error: dataset too small for context length T=%d\n", T); exit(1); }
     for (int b = 0; b < B; b++) {
         size_t s = (size_t)(rand_f32(r) * (n - T - 1));
         for (int t = 0; t < T; t++) { x[b * T + t] = ids[s + t]; y[b * T + t] = ids[s + t + 1]; }
@@ -545,6 +546,7 @@ int main(int argc, char** argv) {
     if (decay_iters < 0) decay_iters = iters;
     if ((B * T) % 4 || C % 4 || C % NH) { fprintf(stderr, "need B*T%%4==0, C%%4==0, C%%H==0\n"); return 1; }
     rng = (uint64_t)seed * 2654435761u + 1;
+    drop_rng = (uint64_t)seed + 13;
     pool_init(threads);
     load_data(data);
     Config cfg = { .maxT = T, .V = V_real, .Vp = (V_real + 3) / 4 * 4, .L = L, .NH = NH, .C = C };

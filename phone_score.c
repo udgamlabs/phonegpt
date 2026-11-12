@@ -19,6 +19,11 @@ int main(int argc, char** argv) {
     pool_init(threads);
     load_data(argv[2]);
     if (hdr[3] != V_real || memcmp(ck_vocab, vocab, V_real)) { fprintf(stderr, "vocabulary differs from the checkpoint\n"); return 1; }
+    if (hdr[2] <= 0 || hdr[2] > (1 << 20)) { fprintf(stderr, "error: checkpoint context length %d out of range\n", hdr[2]); return 1; }
+    if (hdr[4] < hdr[3] || hdr[4] > 1024) { fprintf(stderr, "error: checkpoint padded vocab size %d out of range\n", hdr[4]); return 1; }
+    if (hdr[5] <= 0 || hdr[5] > 1000) { fprintf(stderr, "error: checkpoint layer count %d out of range\n", hdr[5]); return 1; }
+    if (hdr[6] <= 0 || hdr[6] > 1024) { fprintf(stderr, "error: checkpoint head count %d out of range\n", hdr[6]); return 1; }
+    if (hdr[7] <= 0 || hdr[7] > (1 << 20)) { fprintf(stderr, "error: checkpoint channel count %d out of range\n", hdr[7]); return 1; }
     int T = hdr[2];
     Config cfg = { .maxT = T, .V = hdr[3], .Vp = hdr[4], .L = hdr[5], .NH = hdr[6], .C = hdr[7] };
     GPT m; gpt_init(&m, cfg, B, T);
@@ -29,6 +34,7 @@ int main(int argc, char** argv) {
     // parity: the trainer's own fixed draws must come back
     float tl = estimate_loss(&m, train_ids, n_train, eb, 4242, x, y), vl = estimate_loss(&m, val_ids, n_val, eb, 4243, x, y);
 
+    if (n_val <= (size_t)T + 1) { fprintf(stderr, "error: held-out split too small for context length T=%d\n", T); return 1; }
     size_t nw = (n_val - T - 1) / stride + 1; // starts 0, stride, ...; the last target is val_ids[n_val - 1]
     float* win = xmalloc(nw * sizeof(float)); double* pos = calloc(T, sizeof(double)); double total = 0;
     double t0 = now_s(); size_t done = 0;

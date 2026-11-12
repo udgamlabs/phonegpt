@@ -26,7 +26,9 @@ adb shell 'cd /data/local/tmp/phonegpt && (nohup taskset c0 ./phone_gpt -threads
 
 This trial stops after 30 minutes. For the full run, use `-minutes 510`; 18,000 steps took about 8 hours on the F62.
 To replay our live run, use `-iters 24000 -decay 18000 -minutes 680 -seed 20261105`. A fresh build on the same phone matched
-the live run's log at every logged point over the first 277 steps, which is as far as we checked.
+the live run's log at every logged point over the first 277 steps, which is as far as we checked. That match predates the
+fix that seeds `drop_rng` from `-seed` instead of a constant: dropout now varies with the seed as intended, so a replay on
+the current build will diverge from the published log once dropout actually drops anything, even with the same `-seed`.
 
 `taskset c0` pins to cpu6 and cpu7, the F62's fastest cores, and `-threads` matches that count. Check yours first, and
 change the hex mask to fit (`80` is cpu7 alone, `f0` is cpu4 to cpu7):
